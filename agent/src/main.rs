@@ -1,3 +1,4 @@
+use reqwest;
 use std::time::Duration;
 
 mod config;
@@ -10,8 +11,7 @@ use error::Error;
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let timeout = Duration::from_secs(5);
-    let client_builder = reqwest::Client::builder();
-    let client = client_builder
+    let client = reqwest::Client::builder()
         .connect_timeout(timeout)
         .timeout(timeout)
         .build()?;
