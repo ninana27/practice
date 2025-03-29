@@ -1,4 +1,4 @@
-use reqwest;
+use reqwest::{self, Client};
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use std::{path, fs};
@@ -16,13 +16,13 @@ pub struct AgentRegistered {
     pub id: Uuid,
 }
 
-pub async fn get_id() -> Result<Uuid, Error> {
+pub async fn get_id(client: &Client) -> Result<Uuid, Error> {
     let get_saved_id = read_saved_id()?;
     println!("get_saved_id: {:?}", get_saved_id);
     let agent_id = match get_saved_id {
         Some(agent_id) => agent_id,
         None => {
-            let agent_id = registe_id().await?;
+            let agent_id = registe_id(&client).await?;
             save_id(agent_id)?;
             agent_id
         }
@@ -31,10 +31,9 @@ pub async fn get_id() -> Result<Uuid, Error> {
     Ok(agent_id)
 }
 
-async fn registe_id() -> Result<Uuid, Error>{
-
+async fn registe_id(client: &Client) -> Result<Uuid, Error>{
     let url = format!("{}/api/agents", config::SERVER_URL);
-    let client = reqwest::Client::new();
+    
     let resp = client
         .post(&url)
         .send()
