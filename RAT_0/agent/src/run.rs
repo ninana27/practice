@@ -22,12 +22,10 @@ pub struct UpdateJobResult {
     pub output: String,
 }
 
-pub async fn run(agent_id: Uuid) -> ! {
+pub async fn run(client: &Client, agent_id: Uuid) -> ! {
     let sleep_time = Duration::from_secs(1);
     let job_url = format!("{}/api/jobs/{}", config::SERVER_URL, agent_id);
     let job_result_url = format!("{}/api/jobs/result", config::SERVER_URL);
-
-    let client = reqwest::Client::new();
 
     loop {
        let job = match get_job(&client, &job_url).await {
@@ -61,12 +59,13 @@ async fn get_job(client: &Client, job_url: &String) -> Result<AgentJob, Error> {
         .json::<Response<AgentJob>>()
         .await?;
 
-        let agent_job = match resp.data {
-            Some(agent_job) => Ok(agent_job),
-            None => Err(Error::Internal("job data is null".to_string())),
-        }?;
-        Ok(agent_job)
-    }
+    let agent_job = match resp.data {
+        Some(agent_job) => Ok(agent_job),
+        None => Err(Error::Internal("job data is null".to_string())),
+    }?;
+
+    Ok(agent_job)
+}
 
 fn executed_command(command: String, args: Vec<String>) -> String {
     let mut ret = String::new();
@@ -96,8 +95,8 @@ async fn post_result(
         .json::<Response<bool>>()
         .await?;
 
-        match resp.data {
-            Some(ok) => Ok(ok),
-            None => Err(Error::Internal("job data is null".to_string())),
-        }
+    match resp.data {
+        Some(ok) => Ok(ok),
+        None => Err(Error::Internal("job data is null".to_string())),
     }
+}
