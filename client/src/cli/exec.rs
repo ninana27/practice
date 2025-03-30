@@ -1,3 +1,5 @@
+use std::{thread::sleep, time};
+
 use uuid::Uuid;
 use comfy_table::{Table, Cell, Color};
 use crate::{api::{Api, CreateJob}, error::Error};
@@ -38,5 +40,14 @@ pub async fn agent_exec(api: &Api, agent_id: &String, command: &String) -> Resul
     ]);
 
     println!("{table}");
+    sleep(time::Duration::from_secs(3));
+    match api.get_job_result(job_info.id).await {
+        Ok(job_result) => {
+            println!("executed at: {}", job_result.executed_time);
+            println!("result:\n{}", job_result.output);
+        },
+        Err(err) => { println!("{}", err.to_string()) },
+    };
+    
     Ok(())
 }
