@@ -60,3 +60,9 @@ pub struct CreateJob {
     pub agent_id: Uuid,
     pub command: String,
 }
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct JobResult {
+    pub executed_time: String,
+    pub output: String,
+}
