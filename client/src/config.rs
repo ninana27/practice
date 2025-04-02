@@ -1,0 +1,1 @@
+pub const SERVER_URL: &str = "http://192.168.10.3:8080";
