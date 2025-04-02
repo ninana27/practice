@@ -16,7 +16,8 @@ async fn main() -> Result<(), Error> {
         .timeout(timeout)
         .build()?;
 
-    let agent_id = init::get_id(&client).await?;
-    println!("{:?}",agent_id);
-    run::run(&client, agent_id).await;
+    let agent_config = init::get_config(&client).await?;
+    println!("{:?}",agent_config);
+    //run::run(&client, agent_config).await;
+    Ok(())
 }
