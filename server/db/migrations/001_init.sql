@@ -1,7 +1,10 @@
 CREATE TABLE agents (
   id UUID PRIMARY KEY,
   created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-  last_seen_at TIMESTAMP WITH TIME ZONE NOT NULL
+  last_seen_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  signing_public_key BYTEA NOT NULL,
+  public_prekey BYTEA NOT NULL,
+  public_prekey_signature BYTEA NOT NULL
 );
 
 

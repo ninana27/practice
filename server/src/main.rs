@@ -19,7 +19,7 @@ async fn main() -> Result<(), anyhow::Error> {
     std::env::set_var("RUST_LOG", "debug");
     std::env::set_var(
         "DATABASE_URL",
-        "postgres://postgres:root@127.0.0.1:5432/server",
+        "postgres://postgres:root@127.0.0.1:5432/server1",
     );
 
     env_logger::init();

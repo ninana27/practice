@@ -5,8 +5,11 @@ use crate::share;
 
 use crate::api::state::AppState;
 
-pub async fn post_agents(state: Arc<AppState>) -> Result<impl warp::Reply, Rejection> {
-    let anget_info = state.service.register_agent().await?;
+pub async fn post_agents(
+    state: Arc<AppState>,
+    register: share::AgentRegister,
+) -> Result<impl warp::Reply, Rejection> {
+    let anget_info = state.service.register_agent(register).await?;
 
     let res = share::Response::ok(anget_info);
     let res_json = warp::reply::json(&res);

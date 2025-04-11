@@ -54,6 +54,7 @@ pub fn routes(
         .and(warp::path("agents"))
         .and(warp::path::end())
         .and(warp::post())
+        .and(json_body())
         .and_then(post_agents);
 
     // GET api/jobs/result/{job_id}
@@ -102,10 +103,6 @@ pub fn routes(
         .or(get_agents)
         .or(get_job_result)
         .or(post_job_result);
-    //     .or(post_job_result)
-    //     .or(post_agents)
-    //     .or(get_agents)
-    //     .or(get_agents_job);
     // .with(warp::log("server"))
     // .recover(super::handle_error);
 

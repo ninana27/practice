@@ -2133,6 +2133,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "dotenv",
+ "ed25519-dalek",
  "env_logger",
  "log",
  "serde",

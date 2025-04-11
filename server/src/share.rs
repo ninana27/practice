@@ -68,13 +68,6 @@ pub struct AgentJob {
     pub args: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Agent {
-    pub id: Uuid,
-    pub created_at: DateTime<Utc>,
-    pub last_seen_at: DateTime<Utc>,
-}
-
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AgentsList {
     pub agents: Vec<Agent>,
@@ -83,4 +76,23 @@ pub struct AgentsList {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct JobsList {
     pub jobs: Vec<Job>,
+}
+
+
+
+#[derive(Debug,Clone, Deserialize, Serialize)]
+pub struct AgentRegister {
+    pub singing_public_key: [u8; 32],
+    pub public_prekey: [u8; 32],
+    pub public_prekey_signature: Vec<u8>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Agent {
+    pub id: Uuid,
+    pub created_at: DateTime<Utc>,
+    pub last_seen_at: DateTime<Utc>,
+    pub signing_public_key: Vec<u8>,
+    pub public_prekey: Vec<u8>,
+    pub public_prekey_signature: Vec<u8>,
 }
