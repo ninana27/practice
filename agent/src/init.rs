@@ -13,7 +13,6 @@ use crate::{
     error::Error
 };
 
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Response<T: Serialize> {
     pub data: Option<T>,
@@ -67,7 +66,7 @@ async fn register_config(client: &Client) -> Result<Config, Error> {
         public_prekey: public_prekey.clone(),
         public_prekey_signature: public_prekey_signature.to_bytes().to_vec(),
     };
-    signing_keypair.to_keypair_bytes();
+
     let resp = client
         .post(&url)
         .json(&register_agent)
@@ -84,8 +83,8 @@ async fn register_config(client: &Client) -> Result<Config, Error> {
     let client_signing_public_bytes: Vec<u8> = general_purpose::STANDARD
         .decode(config::CLIENT_IDENTITY_PUBLIC_KEY).unwrap();
     let client_signing_public_bytes_arry: [u8; 32] = client_signing_public_bytes.try_into().unwrap();
-    let client_signing_public_key: VerifyingKey = ed25519_dalek::VerifyingKey::from_bytes(&client_signing_public_bytes_arry)?;
-
+    let client_signing_public_key: VerifyingKey = 
+        ed25519_dalek::VerifyingKey::from_bytes(&client_signing_public_bytes_arry)?;
 
     // config
     let config = Config {

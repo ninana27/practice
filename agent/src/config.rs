@@ -1,7 +1,7 @@
 use std::convert::{Into, TryFrom};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use ed25519_dalek::{SigningKey, Signer, Verifier, VerifyingKey, Signature};
+use ed25519_dalek::VerifyingKey;
 use x25519_dalek::{x25519, X25519_BASEPOINT_BYTES};
 use base64::{Engine as _, engine::general_purpose};
 

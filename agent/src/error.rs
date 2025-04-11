@@ -35,3 +35,9 @@ impl From<serde_json::Error> for Error {
        Error::Internal(err.to_string())
     }
 }
+
+impl From<chacha20poly1305::Error> for Error {
+    fn from(err: chacha20poly1305::Error) -> Self {
+       Error::Internal(err.to_string())
+    }
+}
