@@ -92,7 +92,7 @@ pub struct Agent {
     pub id: Uuid,
     pub created_at: DateTime<Utc>,
     pub last_seen_at: DateTime<Utc>,
-    pub signing_public_key: Vec<u8>,
-    pub public_prekey: Vec<u8>,
+    pub signing_public_key: [u8; 32],
+    pub public_prekey: [u8; 32],
     pub public_prekey_signature: Vec<u8>,
 }
