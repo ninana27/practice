@@ -27,6 +27,10 @@ async fn main() -> Result<(), Error> {
         Commands::Exec { agent, command } => {
             cli::exec::agent_exec(&api, agent, command).await?;
         }
+
+        Commands::Signing => {
+            cli::signing::generate_keypair();
+        }
     }
     
     Ok(())

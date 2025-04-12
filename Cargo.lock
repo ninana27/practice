@@ -365,6 +365,8 @@ dependencies = [
  "chrono",
  "clap",
  "comfy-table",
+ "ed25519-dalek",
+ "rand",
  "reqwest",
  "serde",
  "thiserror 2.0.12",

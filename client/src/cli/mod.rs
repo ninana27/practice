@@ -3,6 +3,7 @@ use clap::{Parser, Subcommand};
 pub mod agents;
 pub mod jobs;
 pub mod exec;
+pub mod signing;
 
 /// A client
 #[derive(Parser, Debug)]
@@ -32,5 +33,9 @@ pub enum Commands {
         /// The command to execute, with its arguments
         #[arg(long)]
         command: String,
-    }
+    },
+
+    ///Generate a new Signing keypair
+    Signing,
+
 }
