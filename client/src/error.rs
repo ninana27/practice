@@ -17,3 +17,9 @@ impl From<uuid::Error> for Error {
         Error::Internal(err.to_string())
     }
 }
+
+impl From<base64::DecodeError> for Error {
+    fn from(err: base64::DecodeError) -> Self {
+        Error::Internal(err.to_string())
+    }
+}
