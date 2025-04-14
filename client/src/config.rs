@@ -1,6 +1,6 @@
 use crate::error::Error;
+use base64::{engine::general_purpose, Engine as _};
 use ed25519_dalek;
-use base64::{Engine as _, engine::general_purpose};
 
 pub const SERVER_URL: &str = "http://192.168.10.3:8080";
 
@@ -16,9 +16,8 @@ pub struct Config {
 
 impl Config {
     pub fn load() -> Result<Config, Error> {
-        let signing_private_key_decode = general_purpose::STANDARD
-            .decode(SIGNING_PRIVATE_KEY)?;
-        let signing_private_key: ed25519_dalek::SecretKey = 
+        let signing_private_key_decode = general_purpose::STANDARD.decode(SIGNING_PRIVATE_KEY)?;
+        let signing_private_key: ed25519_dalek::SecretKey =
             ed25519_dalek::SecretKey::try_from(signing_private_key_decode).unwrap();
         let signingkey: ed25519_dalek::SigningKey = (&signing_private_key).into();
         let signing_public_key: ed25519_dalek::VerifyingKey = signingkey.verifying_key();
@@ -29,4 +28,3 @@ impl Config {
         })
     }
 }
-

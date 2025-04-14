@@ -34,6 +34,6 @@ impl warp::reject::Reject for Error {}
 
 impl From<ed25519_dalek::SignatureError> for Error {
     fn from(err: ed25519_dalek::SignatureError) -> Self {
-       Error::Internal(err.to_string())
+        Error::Internal(err.to_string())
     }
 }

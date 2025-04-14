@@ -2,8 +2,8 @@ use reqwest;
 use std::time::Duration;
 
 mod config;
-mod init;
 mod error;
+mod init;
 mod run;
 
 use error::Error;
@@ -17,6 +17,6 @@ async fn main() -> Result<(), Error> {
         .build()?;
 
     let agent_config = init::get_config(&client).await?;
-    println!("{:?}",agent_config);
+    println!("{:?}", agent_config);
     run::run(&client, agent_config).await;
 }

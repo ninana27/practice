@@ -21,6 +21,10 @@ async fn main() -> Result<(), anyhow::Error> {
         "DATABASE_URL",
         "postgres://postgres:root@127.0.0.1:5432/server1",
     );
+    std::env::set_var(
+        "CLIENT_SIGNING_PUBLIC_KEY",
+        "VHaq+MHUCpzStns+lwGeeyYamyOD7E3Z0562RCtp/68=",
+    );
 
     env_logger::init();
 
@@ -29,13 +33,14 @@ async fn main() -> Result<(), anyhow::Error> {
     let db_pool = db::connect(&config.database_url).await?;
     db::migrare(&db_pool).await?;
 
-    let service = Service::new(db_pool);
+    let port = config.port;
+    let service = Service::new(db_pool, config);
     let app_state = Arc::new(AppState::new(service));
 
     let routes = routes(app_state);
 
     let (addr, server) =
-        warp::serve(routes).bind_with_graceful_shutdown(([0, 0, 0, 0], config.port), async {
+        warp::serve(routes).bind_with_graceful_shutdown(([0, 0, 0, 0], port), async {
             tokio::signal::ctrl_c()
                 .await
                 .expect("Failed to listen for CRTL+c");

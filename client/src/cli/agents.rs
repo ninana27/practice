@@ -1,7 +1,7 @@
-use comfy_table::{Table, Cell, Color};
-use base64::{Engine as _, engine::general_purpose};
+use base64::{engine::general_purpose, Engine as _};
+use comfy_table::{Cell, Color, Table};
 
-use crate::{error::Error, api::Api};
+use crate::{api::Api, error::Error};
 
 pub async fn list_agents(api: &Api) -> Result<(), Error> {
     let agents = api.get_list_agents().await?;
@@ -9,9 +9,9 @@ pub async fn list_agents(api: &Api) -> Result<(), Error> {
     let mut table = Table::new();
 
     table.set_header(vec![
-        "Agent ID", 
-        "Created At", 
-        "Last Seen At", 
+        "Agent ID",
+        "Created At",
+        "Last Seen At",
         "Signing Public Key",
         "Public Prekey",
     ]);

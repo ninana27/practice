@@ -1,16 +1,16 @@
 use reqwest::{self, Client};
-use uuid::Uuid;
 use serde::{Deserialize, Serialize};
-use std::{path, fs};
+use std::{fs, path};
+use uuid::Uuid;
 
+use base64::{engine::general_purpose, Engine as _};
+use ed25519_dalek::{Signer, SigningKey, VerifyingKey};
 use rand::{rngs::OsRng, RngCore};
-use ed25519_dalek::{SigningKey, Signer, VerifyingKey};
 use x25519_dalek::{x25519, X25519_BASEPOINT_BYTES};
-use base64::{Engine as _, engine::general_purpose};
 
 use crate::{
     config::{self, Config, SerializedConfig},
-    error::Error
+    error::Error,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -18,12 +18,12 @@ pub struct Response<T: Serialize> {
     pub data: Option<T>,
 }
 
-#[derive(Debug,Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AgentRegistered {
     pub id: Uuid,
 }
 
-#[derive(Debug,Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AgentRegister {
     pub singing_public_key: [u8; 32],
     pub public_prekey: [u8; 32],
@@ -73,7 +73,7 @@ async fn register_config(client: &Client) -> Result<Config, Error> {
         .send()
         .await?
         .json::<Response<AgentRegistered>>()
-        .await?;    
+        .await?;
 
     let agent_id = match resp.data {
         Some(agent) => Ok(agent.id),
@@ -81,9 +81,11 @@ async fn register_config(client: &Client) -> Result<Config, Error> {
     }?;
 
     let client_signing_public_bytes: Vec<u8> = general_purpose::STANDARD
-        .decode(config::CLIENT_IDENTITY_PUBLIC_KEY).unwrap();
-    let client_signing_public_bytes_arry: [u8; 32] = client_signing_public_bytes.try_into().unwrap();
-    let client_signing_public_key: VerifyingKey = 
+        .decode(config::CLIENT_IDENTITY_PUBLIC_KEY)
+        .unwrap();
+    let client_signing_public_bytes_arry: [u8; 32] =
+        client_signing_public_bytes.try_into().unwrap();
+    let client_signing_public_key: VerifyingKey =
         ed25519_dalek::VerifyingKey::from_bytes(&client_signing_public_bytes_arry)?;
 
     // config
@@ -112,11 +114,11 @@ fn read_saved_config() -> Result<Option<Config>, Error> {
     let saved_file_path = path::Path::new(config::ID_FILE_PATH);
     if saved_file_path.exists() {
         let agent_file_content = fs::read(saved_file_path)?;
-        let serialized_conf: config::SerializedConfig =serde_json::from_slice(&agent_file_content)?;
+        let serialized_conf: config::SerializedConfig =
+            serde_json::from_slice(&agent_file_content)?;
         let agent_config: Config = serialized_conf.try_into()?;
         Ok(Some(agent_config))
-    }
-    else {
+    } else {
         Ok(None)
     }
 }

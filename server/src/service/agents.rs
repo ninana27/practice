@@ -1,19 +1,19 @@
 use chrono::Utc;
-use uuid::Uuid;
 use ed25519_dalek;
-
+use uuid::Uuid;
 
 use super::Service;
+use crate::share::{AgentRegister, AgentRegistered};
 use crate::{entities::Agent, error::Error};
-use crate::share::{AgentRegistered, AgentRegister};
 
 impl Service {
     pub async fn register_agent(&self, register: AgentRegister) -> Result<AgentRegistered, Error> {
         let id = Uuid::new_v4();
         let created_at = Utc::now();
-        
+
         // verify register
-        if register.public_prekey_signature.len() != 64 { //ED25519_SIGNATURE_SIZE 64
+        if register.public_prekey_signature.len() != 64 {
+            //ED25519_SIGNATURE_SIZE 64
             return Err(Error::InvalidArgument(
                 "Agent's public prekey Signature size is not valid".to_string(),
             ));
@@ -21,7 +21,8 @@ impl Service {
 
         let agent_signing_public_key =
             ed25519_dalek::VerifyingKey::from_bytes(&register.singing_public_key)?;
-        let signature = ed25519_dalek::Signature::try_from(&register.public_prekey_signature[0..64])?;
+        let signature =
+            ed25519_dalek::Signature::try_from(&register.public_prekey_signature[0..64])?;
 
         log::debug!("register_agent: register is valid");
 
@@ -49,5 +50,9 @@ impl Service {
 
     pub async fn list_agents(&self) -> Result<Vec<Agent>, Error> {
         self.repo.find_all_agents(&self.db).await
+    }
+
+    pub async fn get_agent(&self, agent_id: Uuid) -> Result<Agent, Error> {
+        self.repo.find_agent_by_id(&self.db, agent_id).await
     }
 }

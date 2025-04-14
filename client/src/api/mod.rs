@@ -1,7 +1,7 @@
-use std::time::Duration;
-use reqwest::{Client, redirect};
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use reqwest::{redirect, Client};
+use serde::{Deserialize, Serialize};
+use std::time::Duration;
 use uuid::Uuid;
 
 mod agents;
@@ -23,14 +23,9 @@ impl Api {
             .build()
             .expect("Building HTTP client");
 
-        Api { 
-            client, 
-            server_url, 
-        }
+        Api { client, server_url }
     }
 }
-
-
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Response<T: Serialize> {
@@ -47,21 +42,28 @@ pub struct Agent {
     pub public_prekey_signature: Vec<u8>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Job {
     pub id: Uuid,
-    pub created_at: DateTime<Utc>,
-    pub executed_at: Option<DateTime<Utc>>,
-    pub command: String,
-    pub args: Vec<String>,
-    pub output: Option<String>,
     pub agent_id: Uuid,
+    pub encrypted_job: Vec<u8>,
+    pub ephemeral_public_key: Vec<u8>,
+    pub nonce: Vec<u8>,
+    pub signature: Vec<u8>,
+    pub encrypted_result: Option<Vec<u8>>,
+    pub result_ephemeral_public_key: Option<Vec<u8>>,
+    pub result_nonce: Option<Vec<u8>>,
+    pub result_signature: Option<Vec<u8>>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct CreateJob {
+    pub id: Uuid,
     pub agent_id: Uuid,
-    pub command: String,
+    pub encrypted_job: Vec<u8>,
+    pub ephemeral_public_key: [u8; 32], // X25519_PUBLIC_KEY_SIZE 32
+    pub nonce: [u8; 24],                // XCHACHA20_POLY1305_NONCE_SIZE 24
+    pub signature: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

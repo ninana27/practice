@@ -39,12 +39,6 @@ pub struct AgentRegistered {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct CreateJob {
-    pub agent_id: Uuid,
-    pub command: String,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Job {
     pub id: Uuid,
     pub created_at: DateTime<Utc>,
@@ -62,13 +56,6 @@ pub struct UpdateJobResult {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct AgentJob {
-    pub id: Uuid,
-    pub command: String,
-    pub args: Vec<String>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AgentsList {
     pub agents: Vec<Agent>,
 }
@@ -78,9 +65,7 @@ pub struct JobsList {
     pub jobs: Vec<Job>,
 }
 
-
-
-#[derive(Debug,Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AgentRegister {
     pub singing_public_key: [u8; 32],
     pub public_prekey: [u8; 32],
@@ -95,4 +80,23 @@ pub struct Agent {
     pub signing_public_key: [u8; 32],
     pub public_prekey: [u8; 32],
     pub public_prekey_signature: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct CreateJob {
+    pub id: Uuid,
+    pub agent_id: Uuid,
+    pub encrypted_job: Vec<u8>,
+    pub ephemeral_public_key: [u8; 32], // X25519_PUBLIC_KEY_SIZE 32
+    pub nonce: [u8; 24],                // XCHACHA20_POLY1305_NONCE_SIZE 24
+    pub signature: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct AgentJob {
+    pub id: Uuid,
+    pub encrypted_job: Vec<u8>,
+    pub ephemeral_public_key: [u8; 32], // X25519_PUBLIC_KEY_SIZE 32
+    pub nonce: [u8; 24],                //XCHACHA20_POLY1305_NONCE_SIZE 24
+    pub signature: Vec<u8>,
 }

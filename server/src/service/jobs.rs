@@ -12,27 +12,46 @@ impl Service {
     }
 
     pub async fn create_job(&self, input: share::CreateJob) -> Result<Job, Error> {
-        let command = input.command.trim();
-        let mut command_with_args: Vec<String> = command
-            .split_whitespace()
-            .into_iter()
-            .map(|s| s.to_owned())
-            .collect();
-        if command_with_args.is_empty() {
-            return Err(Error::InvalidArgument("Command is not valid".to_string()));
+        // validate input
+        if input.encrypted_job.len() > super::ENCRYPTED_JOB_MAX_SIZE {
+            return Err(Error::InvalidArgument("Job is too large".to_string()));
         }
 
-        let command = command_with_args.remove(0);
+        if input.signature.len() != 64 {
+            // ED25519_SIGNATURE_SIZE 64
+            return Err(Error::InvalidArgument(
+                "Signature size is not valid".to_string(),
+            ));
+        }
 
-        let now = Utc::now();
+        let mut job_buffer = input.id.as_bytes().to_vec();
+        job_buffer.append(&mut input.agent_id.as_bytes().to_vec());
+        job_buffer.append(&mut input.encrypted_job.clone());
+        job_buffer.append(&mut input.ephemeral_public_key.to_vec());
+        job_buffer.append(&mut input.nonce.to_vec());
+
+        let signature = ed25519_dalek::Signature::try_from(&input.signature[0..64])?;
+
+        if !self
+            .config
+            .client_signing_public_key
+            .verify_strict(&job_buffer, &signature)
+            .is_ok()
+        {
+            return Err(Error::InvalidArgument("Signature is not valid".to_string()));
+        }
+
         let new_job = Job {
-            id: Uuid::new_v4(),
-            created_at: now,
-            executed_at: None,
-            command,
-            args: Json(command_with_args),
-            output: None,
+            id: input.id,
             agent_id: input.agent_id,
+            encrypted_job: input.encrypted_job,
+            ephemeral_public_key: input.ephemeral_public_key.to_vec(),
+            nonce: input.nonce.to_vec(),
+            signature: input.signature,
+            encrypted_result: None,
+            result_ephemeral_public_key: None,
+            result_nonce: None,
+            result_signature: None,
         };
 
         self.repo.create_job(&self.db, &new_job).await?;
@@ -58,14 +77,14 @@ impl Service {
         self.repo.find_job_by_id(&self.db, job_id).await
     }
 
-    pub async fn update_job_result(&self, job_result: share::UpdateJobResult) -> Result<(), Error> {
-        let mut job = self
-            .repo
-            .find_job_by_id(&self.db, job_result.job_id)
-            .await?;
+    // pub async fn update_job_result(&self, job_result: share::UpdateJobResult) -> Result<(), Error> {
+    //     let mut job = self
+    //         .repo
+    //         .find_job_by_id(&self.db, job_result.job_id)
+    //         .await?;
 
-        job.executed_at = Some(Utc::now());
-        job.output = Some(job_result.output);
-        self.repo.update_job(&self.db, &job).await
-    }
+    //     job.executed_at = Some(Utc::now());
+    //     job.output = Some(job_result.output);
+    //     self.repo.update_job(&self.db, &job).await
+    // }
 }

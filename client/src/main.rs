@@ -1,12 +1,12 @@
 use clap::Parser;
 
+mod api;
+mod cli;
 mod config;
 mod error;
-mod cli;
-mod api;
 
-use cli::{Cli, Commands};
 use api::Api;
+use cli::{Cli, Commands};
 use error::Error;
 
 #[tokio::main]
@@ -25,13 +25,14 @@ async fn main() -> Result<(), Error> {
         }
 
         Commands::Exec { agent, command } => {
-            cli::exec::agent_exec(&api, agent, command).await?;
+            let config = config::Config::load()?;
+            cli::exec::agent_exec(&api, agent, command, config).await?;
         }
 
         Commands::Signing => {
             cli::signing::generate_keypair();
         }
     }
-    
+
     Ok(())
 }

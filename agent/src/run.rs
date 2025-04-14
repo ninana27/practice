@@ -1,34 +1,33 @@
-use std::process::Command;
-use std::time::Duration;
-use reqwest::Client;
-use tokio::time::sleep;
-use uuid::Uuid;
-use serde::{Deserialize, Serialize};
-use ed25519_dalek::Verifier;
-use rand::RngCore;
-use std::convert::TryFrom;
-use x25519_dalek::x25519;
-use zeroize::Zeroize;
+use blake2::digest::{Update, VariableOutput};
 use blake2::Blake2bVar;
-use blake2::digest::{Update, VariableOutput}; 
 use chacha20poly1305::{
     aead::{Aead, KeyInit},
-    XChaCha20Poly1305
+    XChaCha20Poly1305,
 };
-
+use ed25519_dalek::Verifier;
+use rand::RngCore;
+use reqwest::Client;
+use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
+use std::process::Command;
+use std::time::Duration;
+use tokio::time::sleep;
+use uuid::Uuid;
+use x25519_dalek::x25519;
+use zeroize::Zeroize;
 
 use crate::{
+    config::{self, Config},
+    error::Error,
     init::Response,
-    config::{self, Config}, 
-    error::Error
 };
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AgentJob {
     pub id: Uuid,
     pub encrypted_job: Vec<u8>,
-    pub ephemeral_public_key: [u8; 32],//X25519_PUBLIC_KEY_SIZE
-    pub nonce: [u8; 24],//XCHACHA20_POLY1305_NONCE_SIZE
+    pub ephemeral_public_key: [u8; 32], //X25519_PUBLIC_KEY_SIZE
+    pub nonce: [u8; 24],                //XCHACHA20_POLY1305_NONCE_SIZE
     pub signature: Vec<u8>,
 }
 
@@ -51,13 +50,13 @@ pub async fn run(client: &Client, config: Config) -> ! {
     let job_result_url = format!("{}/api/jobs/result", config::SERVER_URL);
 
     loop {
-       let encrypted_job = match get_job(&client, &job_url).await { 
+        let encrypted_job = match get_job(&client, &job_url).await {
             Ok(encrypted_job) => encrypted_job,
             Err(err) => {
                 println!("{err}");
                 sleep(sleep_time).await;
                 continue;
-            },
+            }
         };
 
         let (job_id, job) = match decrypt_and_verify_job(&config, encrypted_job) {
@@ -71,21 +70,20 @@ pub async fn run(client: &Client, config: Config) -> ! {
 
         let output = executed_command(job.command, job.args);
 
-        let job_result = UpdateJobResult {
-            job_id: job_id,
-            output
-        };
-        match post_result(&client, &job_result_url, job_result).await {
-            Ok(_) => {},
-            Err(err) => { println!("{err}"); },
-        };
-        sleep(sleep_time).await;
-        continue;
+        // let job_result = UpdateJobResult {
+        //     job_id: job_id,
+        //     output
+        // };
+        // match post_result(&client, &job_result_url, job_result).await {
+        //     Ok(_) => {},
+        //     Err(err) => { println!("{err}"); },
+        // };
+        // sleep(sleep_time).await;
+        // continue;
     }
 }
 
 async fn get_job(client: &Client, job_url: &String) -> Result<AgentJob, Error> {
-    
     let resp = client
         .get(job_url)
         .send()
@@ -118,7 +116,7 @@ fn executed_command(command: String, args: Vec<String>) -> String {
 
 async fn post_result(
     client: &Client,
-    job_result_url: &String, 
+    job_result_url: &String,
     job_result: UpdateJobResult,
 ) -> Result<bool, Error> {
     let resp = client
@@ -135,13 +133,10 @@ async fn post_result(
     }
 }
 
-
-fn decrypt_and_verify_job(
-    config: &Config, 
-    job: AgentJob
-) -> Result<(Uuid, JobPayload), Error> {
+fn decrypt_and_verify_job(config: &Config, job: AgentJob) -> Result<(Uuid, JobPayload), Error> {
     // verify input
-    if job.signature.len() != 64 { //ED25519_SIGNATURE_SIZE
+    if job.signature.len() != 64 {
+        //ED25519_SIGNATURE_SIZE
         return Err(Error::Internal(
             "Job's signature size is not valid".to_string(),
         ));
