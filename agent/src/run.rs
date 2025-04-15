@@ -4,10 +4,10 @@ use chacha20poly1305::{
     aead::{Aead, KeyInit},
     XChaCha20Poly1305,
 };
-use ed25519_dalek::Verifier;
-use rand::RngCore;
+use rand::{rngs::OsRng, RngCore};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use signature::SignerMut;
 use std::convert::TryFrom;
 use std::process::Command;
 use std::time::Duration;
@@ -39,9 +39,17 @@ pub struct JobPayload {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct JobResult {
+    pub output: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UpdateJobResult {
     pub job_id: Uuid,
-    pub output: String,
+    pub encrypted_result: Vec<u8>,
+    pub ephemeral_public_key: [u8; 32], // XCHACHA20_POLY1305_NONCE_SIZE 32
+    pub nonce: [u8; 24], // XCHACHA20_POLY1305_NONCE_SIZE 24
+    pub signature: Vec<u8>,
 }
 
 pub async fn run(client: &Client, config: Config) -> ! {
@@ -70,16 +78,28 @@ pub async fn run(client: &Client, config: Config) -> ! {
 
         let output = executed_command(job.command, job.args);
 
-        // let job_result = UpdateJobResult {
-        //     job_id: job_id,
-        //     output
-        // };
-        // match post_result(&client, &job_result_url, job_result).await {
-        //     Ok(_) => {},
-        //     Err(err) => { println!("{err}"); },
-        // };
-        // sleep(sleep_time).await;
-        // continue;
+        let job_result = match encrypt_and_sign_result(
+            &config, 
+            job_id, 
+            output, 
+            job.result_ephemeral_public_key,
+        ) {
+            Ok(result) => result,
+            Err(err) => { 
+                println!("{err}");
+                sleep(sleep_time).await;
+                continue;
+            }
+        };
+
+        match post_result(&client, &job_result_url, job_result).await {
+            Ok(_) => {},
+            Err(err) => { 
+                println!("{err}"); 
+                sleep(sleep_time).await;
+                continue;
+            },
+        };
     }
 }
 
@@ -180,4 +200,64 @@ fn decrypt_and_verify_job(config: &Config, job: AgentJob) -> Result<(Uuid, JobPa
     let job_payload: JobPayload = serde_json::from_slice(&decrypted_job_bytes)?;
 
     Ok((job.id, job_payload))
+}
+
+
+fn encrypt_and_sign_result(
+    config: &Config,
+    job_id: Uuid,
+    output: String,
+    result_ephemeral_public_key: [u8; 32],
+) -> Result<UpdateJobResult, Error>{
+    let mut csprng = OsRng;
+
+    // generate ephemeral keypair for job result encryption
+    let mut ephemeral_private_key = [0u8; 32]; //X25519_PRIVATE_KEY_SIZE 32
+    csprng.fill_bytes(&mut ephemeral_private_key);
+    let ephemeral_public_key = x25519(
+        ephemeral_private_key.clone(),
+        x25519_dalek::X25519_BASEPOINT_BYTES,
+    );
+
+    // key exchange for job result encryption
+    let mut shared_secret = x25519(ephemeral_private_key, result_ephemeral_public_key);
+
+    // generate nonce
+    let mut nonce = [0u8; 24]; // XCHACHA20_POLY1305_NONCE_SIZE 24
+    csprng.fill_bytes(&mut nonce);
+
+    // derive key
+    let mut kdf = Blake2bVar::new(32).unwrap(); //XCHACHA20_POLY1305_KEY_SIZE 32
+    kdf.update(&shared_secret);
+    kdf.update(&nonce);
+    let mut key = kdf.finalize_boxed();
+
+    // serialize job result
+    let result_payload = JobResult { output };
+    let encrypted_result_json = serde_json::to_vec(&result_payload)?;
+
+    // encrypt job result
+    let cipher = XChaCha20Poly1305::new(key.as_ref().into());
+    let encrypted_result = cipher.encrypt(&nonce.into(), encrypted_result_json.as_ref())?;
+
+    shared_secret.zeroize();
+    key.zeroize();
+
+    // sign job_id, agent_id, encrypted_job, ephemeral_public_key, nonce
+    let mut buffer_to_sign = job_id.as_bytes().to_vec();
+    buffer_to_sign.append(&mut config.agent_id.as_bytes().to_vec());
+    buffer_to_sign.append(&mut encrypted_result.clone());
+    buffer_to_sign.append(&mut ephemeral_public_key.to_vec());
+    buffer_to_sign.append(&mut nonce.to_vec());
+
+    let mut signing: ed25519_dalek::SigningKey = (&config.signing_private_key).into();
+    let signature = signing.sign(&buffer_to_sign);
+
+    Ok(UpdateJobResult {
+        job_id,
+        encrypted_result,
+        ephemeral_public_key,
+        nonce,
+        signature: signature.to_bytes().to_vec(),
+    })
 }
