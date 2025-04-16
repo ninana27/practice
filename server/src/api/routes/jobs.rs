@@ -70,13 +70,13 @@ pub async fn get_job_result(
     Ok(warp::reply::with_status(res_json, StatusCode::OK))
 }
 
-// pub async fn post_job_result(
-//     state: Arc<AppState>,
-//     job_result: share::UpdateJobResult,
-// ) -> Result<impl warp::Reply, warp::Rejection> {
-//     state.service.update_job_result(job_result).await?;
+pub async fn post_job_result(
+    state: Arc<AppState>,
+    job_result: share::UpdateJobResult,
+) -> Result<impl warp::Reply, warp::Rejection> {
+    state.service.update_job_result(job_result).await?;
 
-//     let res = share::Response::ok(true);
-//     let res_json = warp::reply::json(&res);
-//     Ok(warp::reply::with_status(res_json, StatusCode::OK))
-// }
+    let res = share::Response::ok(true);
+    let res_json = warp::reply::json(&res);
+    Ok(warp::reply::with_status(res_json, StatusCode::OK))
+}

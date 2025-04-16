@@ -50,12 +50,6 @@ pub struct Job {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct UpdateJobResult {
-    pub job_id: Uuid,
-    pub output: String,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AgentsList {
     pub agents: Vec<Agent>,
 }
@@ -98,5 +92,19 @@ pub struct AgentJob {
     pub encrypted_job: Vec<u8>,
     pub ephemeral_public_key: [u8; 32], // X25519_PUBLIC_KEY_SIZE 32
     pub nonce: [u8; 24],                //XCHACHA20_POLY1305_NONCE_SIZE 24
+    pub signature: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct JobResult {
+    pub output: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct UpdateJobResult {
+    pub job_id: Uuid,
+    pub encrypted_result: Vec<u8>,
+    pub ephemeral_public_key: [u8; 32], // XCHACHA20_POLY1305_NONCE_SIZE 32
+    pub nonce: [u8; 24], // XCHACHA20_POLY1305_NONCE_SIZE 24
     pub signature: Vec<u8>,
 }

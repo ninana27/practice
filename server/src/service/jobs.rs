@@ -1,10 +1,9 @@
 use chrono::Utc;
-use sqlx::types::Json;
 use uuid::Uuid;
 
 use crate::{entities::Job, error::Error, share};
 
-use super::Service;
+use super::{Service, ENCRYPTED_JOB_RESULT_MAX_SIZE};
 
 impl Service {
     pub async fn list_jobs(&self) -> Result<Vec<Job>, Error> {
@@ -77,14 +76,47 @@ impl Service {
         self.repo.find_job_by_id(&self.db, job_id).await
     }
 
-    // pub async fn update_job_result(&self, job_result: share::UpdateJobResult) -> Result<(), Error> {
-    //     let mut job = self
-    //         .repo
-    //         .find_job_by_id(&self.db, job_result.job_id)
-    //         .await?;
+    pub async fn update_job_result(&self, job_result: share::UpdateJobResult) -> Result<(), Error> {
+        let mut job = self.repo.find_job_by_id(&self.db, job_result.job_id).await?;
+        let agent = self.repo.find_agent_by_id(&self.db, job.agent_id).await?;
 
-    //     job.executed_at = Some(Utc::now());
-    //     job.output = Some(job_result.output);
-    //     self.repo.update_job(&self.db, &job).await
-    // }
+        // validate job result
+        if job_result.encrypted_result.len() > ENCRYPTED_JOB_RESULT_MAX_SIZE {
+            return Err(Error::InvalidArgument("Result is too large".to_string()));
+        }
+
+        if job_result.signature.len() != 64 { // ED25519_SIGNATURE_SIZE 64
+            return Err(Error::InvalidArgument(
+                "Signature size is not valid".to_string(),
+            ));
+        }
+
+        let mut job_result_buffer = job_result.job_id.as_bytes().to_vec();
+        job_result_buffer.append(&mut agent.id.as_bytes().to_vec());
+        job_result_buffer.append(&mut job_result.encrypted_result.clone());
+        job_result_buffer.append(&mut job_result.ephemeral_public_key.to_vec());
+        job_result_buffer.append(&mut job_result.nonce.to_vec());
+
+        let signature = ed25519_dalek::Signature::try_from(&job_result.signature[0..64])?;
+        let agent_signing_public_key_bytes: [u8; 32] = agent.signing_public_key
+            .as_slice()
+            .try_into()
+            .expect("not valid");
+        let agent_signing_public_key = 
+            ed25519_dalek::VerifyingKey::from_bytes(&agent_signing_public_key_bytes)?;
+        if agent_signing_public_key
+        .verify_strict(&job_result_buffer, &signature)
+        .is_err()
+    {
+        return Err(Error::Internal(
+            "Signature is not valid".to_string(),
+        ));
+    }
+
+    job.encrypted_result = Some(job_result.encrypted_result);
+    job.result_ephemeral_public_key = Some(job_result.ephemeral_public_key.to_vec());
+    job.result_nonce = Some(job_result.nonce.to_vec());
+    job.result_signature = Some(job_result.signature);
+        self.repo.update_job(&self.db, &job).await 
+    }
 }

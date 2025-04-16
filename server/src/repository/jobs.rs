@@ -83,23 +83,26 @@ impl Repository {
         }
     }
 
-    // pub async fn update_job(&self, db: &Pool<Postgres>, job: &Job) -> Result<(), Error> {
-    //     const QUERY: &str = "UPDATE jobs
-    //         SET executed_at = $1, output = $2
-    //         WHERE id = $3";
+    pub async fn update_job(&self, db: &Pool<Postgres>, job: &Job) -> Result<(), Error> {
+        const QUERY: &str = "UPDATE jobs
+            SET encrypted_result = $1, result_ephemeral_public_key = $2,
+                result_nonce = $3, result_signature = $4
+            WHERE id = $5";
 
-    //     match sqlx::query(QUERY)
-    //         .bind(job.executed_at)
-    //         .bind(&job.output)
-    //         .bind(job.id)
-    //         .execute(db)
-    //         .await
-    //     {
-    //         Err(err) => {
-    //             error!("update_job: updating job: {}", &err);
-    //             Err(err.into())
-    //         }
-    //         Ok(_) => Ok(()),
-    //     }
-    // }
+        match sqlx::query(QUERY)
+            .bind(&job.encrypted_result)
+            .bind(&job.result_ephemeral_public_key)
+            .bind(&job.result_nonce)
+            .bind(&job.result_signature)
+            .bind(job.id)
+            .execute(db)
+            .await
+        {
+            Err(err) => {
+                error!("update_job: updating job: {}", &err);
+                Err(err.into())
+            }
+            Ok(_) => Ok(()),
+        }
+    }
 }

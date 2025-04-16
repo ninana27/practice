@@ -11,7 +11,7 @@ mod jobs;
 
 use agents::{get_agent_info, get_agents, post_agents};
 use index::index;
-use jobs::{create_job, get_agent_job, get_job_result, get_jobs};
+use jobs::{create_job, get_agent_job, get_job_result, get_jobs, post_job_result};
 
 pub fn routes(
     app_state: Arc<AppState>,
@@ -66,15 +66,15 @@ pub fn routes(
         .and(warp::path::end())
         .and_then(get_job_result);
 
-    // // POST api/jobs/result
-    // let post_job_result = api_with_state
-    //     .clone()
-    //     .and(warp::path("jobs"))
-    //     .and(warp::path("result"))
-    //     .and(warp::path::end())
-    //     .and(warp::post())
-    //     .and(json_body())
-    //     .and_then(post_job_result);
+    // POST api/jobs/result
+    let post_job_result = api_with_state
+        .clone()
+        .and(warp::path("jobs"))
+        .and(warp::path("result"))
+        .and(warp::path::end())
+        .and(warp::post())
+        .and(json_body())
+        .and_then(post_job_result);
 
     // GET /api/agents
     let get_agents = api_with_state
@@ -110,8 +110,8 @@ pub fn routes(
         .or(post_agents)
         .or(get_agents)
         .or(get_job_result)
-        .or(get_agent_info);
-    //.or(post_job_result);
+        .or(get_agent_info)
+        .or(post_job_result);
     // .with(warp::log("server"))
     // .recover(super::handle_error);
 
