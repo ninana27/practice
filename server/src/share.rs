@@ -18,12 +18,12 @@ impl<T: Serialize> Response<T> {
         };
     }
 
-    pub fn err(err: Error) -> Response<()> {
-        return Response::<()> {
-            data: None,
-            error: Some(err.into()),
-        };
-    }
+    // pub fn err(err: Error) -> Response<()> {
+    //     return Response::<()> {
+    //         data: None,
+    //         error: Some(err.into()),
+    //     };
+    // }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

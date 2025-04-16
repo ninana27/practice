@@ -72,8 +72,14 @@ impl Service {
         }
     }
 
-    pub async fn list_job_result(&self, job_id: Uuid) -> Result<Job, Error> {
-        self.repo.find_job_by_id(&self.db, job_id).await
+    pub async fn list_job_result(&self, job_id: Uuid) -> Result<Option<Job>, Error> {
+        let job = self.repo.find_job_by_id(&self.db, job_id).await?;
+
+        match &job.encrypted_result {
+            Some(_) => Ok(Some(job)),
+            None => Ok(None),
+        }
+        
     }
 
     pub async fn update_job_result(&self, job_result: share::UpdateJobResult) -> Result<(), Error> {

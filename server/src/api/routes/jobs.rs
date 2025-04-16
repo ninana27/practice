@@ -63,9 +63,22 @@ pub async fn get_job_result(
     state: Arc<AppState>,
     job_id: Uuid,
 ) -> Result<impl warp::Reply, Rejection> {
-    let job = state.service.list_job_result(job_id).await?;
+    let sleep_time = Duration::from_secs(1);
 
-    let res = share::Response::ok(job);
+    // long polling: 5 secs
+    for _ in 0..5u64 {
+        match state.service.list_job_result(job_id).await? {
+            Some(job) => {
+                let res = share::Response::ok(job);
+                let res_json = warp::reply::json(&res);
+                return Ok(warp::reply::with_status(res_json, StatusCode::OK))
+            }
+            None => tokio::time::sleep(sleep_time).await,
+        }
+    }
+
+    // if no job is found, return empty response
+    let res = share::Response::<Option<()>>::ok(None);
     let res_json = warp::reply::json(&res);
     Ok(warp::reply::with_status(res_json, StatusCode::OK))
 }
