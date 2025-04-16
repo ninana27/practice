@@ -4,17 +4,18 @@ use chacha20poly1305::{
     aead::{Aead, KeyInit},
     XChaCha20Poly1305,
 };
-use comfy_table::{Cell, Color, Table};
 use ed25519_dalek::ed25519::signature::SignerMut;
 use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
-use std::{thread::sleep, time};
+use std::time::Duration;
+use std::thread::sleep;
 use uuid::Uuid;
-use x25519_dalek::{x25519, X25519_BASEPOINT_BYTES};
+use x25519_dalek::x25519;
 use zeroize::{self, Zeroize};
 
+use crate::api::Job;
 use crate::{
-    api::{Api, CreateJob},
+    api::{Api, CreateJob, JobResult},
     config::Config,
     error::Error,
 };
@@ -49,7 +50,7 @@ pub async fn agent_exec(
 
     // get agent's info
     let agent = api.get_agent(agent_id).await?;
-    println!("{:?}", agent);
+    // println!("{:?}", agent);
     let signing_public_key: &[u8; 32] = &agent
         .signing_public_key
         .as_slice()
@@ -64,7 +65,7 @@ pub async fn agent_exec(
         .expect("Key is not valid");
 
     // encrypt job
-    let (createjob, mut job_ephemeral_private_key) = encrypt_and_sign_job(
+    let (createjob, job_ephemeral_private_key) = encrypt_and_sign_job(
         &config,
         command,
         args,
@@ -75,16 +76,22 @@ pub async fn agent_exec(
     )?;
 
     let job_info = api.post_create_job(createjob).await?;
-    println!("{:?}", job_info);
-
-    // sleep(time::Duration::from_secs(3));
-    // match api.get_job_result(job_info.id).await {
-    //     Ok(job_result) => {
-    //         println!("executed at: {}", job_result.executed_time);
-    //         println!("result:\n{}", job_result.output);
-    //     },
-    //     Err(err) => { println!("{}", err.to_string()) },
-    // };
+    // println!("{:?}", job_info);
+    //sleep(Duration::from_secs(1));
+    
+    loop {
+        if let Some(job) = api.get_job_result(job_info.id).await? {
+            // decrypt job result
+            let job_result = decrypt_and_verify_job_result(
+                job,
+                job_ephemeral_private_key,
+                &agent_signing_public_key,
+            )?;
+            println!("{}", job_result);
+            break;
+        }
+        sleep(Duration::from_secs(1));
+    }
 
     Ok(())
 }
@@ -187,4 +194,76 @@ fn encrypt_and_sign_job(
         },
         job_result_ephemeral_private_key,
     ))
+}
+
+fn decrypt_and_verify_job_result(
+    job: Job,
+    job_ephemeral_private_key: [u8; 32],
+    agent_signing_public_key: &ed25519_dalek::VerifyingKey,
+) -> Result<String, Error> {
+    // verify job_id, agent_id, encrypted_job_result, result_ephemeral_public_key, result_nonce
+    let encrypted_job_result = job
+        .encrypted_result
+        .ok_or(Error::Internal("Job's result is missing".to_string()))?;
+
+    let result_ephemeral_public_key: [u8; 32] = job
+        .result_ephemeral_public_key
+        .ok_or(Error::Internal("Job's result ephemeral public key is missing".to_string()))?
+        .as_slice()
+        .try_into()
+        .expect("not valid");
+
+    let result_nonce: [u8; 24] = job
+        .result_nonce
+        .ok_or(Error::Internal("Job's result nonce is missing".to_string()))?
+        .as_slice()
+        .try_into()
+        .expect("not valid");
+
+    let mut buffer_to_verify = job.id.as_bytes().to_vec();
+    buffer_to_verify.append(&mut job.agent_id.as_bytes().to_vec());
+    buffer_to_verify.append(&mut encrypted_job_result.clone());
+    buffer_to_verify.append(&mut result_ephemeral_public_key.to_vec());
+    buffer_to_verify.append(&mut result_nonce.to_vec());
+
+    let result_signature = job.result_signature.ok_or(Error::Internal(
+        "Job's result signature is missing".to_string(),
+    ))?;
+    if result_signature.len() != 64 {
+        return Err(Error::Internal(
+            "Job's result signature size is not valid".to_string(),
+        ));
+    }
+
+    let signature = ed25519_dalek::Signature::try_from(&result_signature[0..64])?;
+    if agent_signing_public_key
+        .verify_strict(&buffer_to_verify, &signature)
+        .is_err()
+    {
+        return Err(Error::Internal(
+            "Agent's prekey Signature is not valid".to_string(),
+        ));
+    }
+
+    // key exchange for job result decryption
+    let mut shared_secret = x25519(job_ephemeral_private_key, result_ephemeral_public_key);
+
+    // derive key
+    let mut kdf = Blake2bVar::new(32).unwrap(); //XCHACHA20_POLY1305_KEY_SIZE 32
+    kdf.update(&shared_secret);
+    kdf.update(&result_nonce);
+    let mut key = kdf.finalize_boxed();
+
+    // decrypt job result
+    let cipher = XChaCha20Poly1305::new(key.as_ref().into());
+    let decrypted_job_bytes =
+        cipher.decrypt(&result_nonce.into(), encrypted_job_result.as_ref())?;
+
+    shared_secret.zeroize();
+    key.zeroize();
+
+    // deserialize job result
+    let job_result: JobResult = serde_json::from_slice(&decrypted_job_bytes)?;
+
+    Ok(job_result.output)
 }

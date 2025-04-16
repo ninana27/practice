@@ -1,4 +1,3 @@
-use chacha20poly1305::XChaCha20Poly1305;
 use ed25519_dalek::ed25519;
 use thiserror::Error;
 

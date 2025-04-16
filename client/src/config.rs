@@ -23,8 +23,8 @@ impl Config {
         let signing_public_key: ed25519_dalek::VerifyingKey = signingkey.verifying_key();
 
         Ok(Config {
-            signing_private_key,
             signing_public_key,
+            signing_private_key,
         })
     }
 }

@@ -68,6 +68,5 @@ pub struct CreateJob {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct JobResult {
-    pub executed_time: String,
     pub output: String,
 }
